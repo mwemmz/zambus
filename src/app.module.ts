@@ -6,7 +6,10 @@ import { validateEnvironment } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { FleetModule } from './modules/fleet/fleet.module';
 import { HealthModule } from './modules/health/health.module';
+import { NetworkModule } from './modules/network/network.module';
+import { OperatorModule } from './modules/operator/operator.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -23,6 +26,9 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     AuditModule,
     HealthModule,
     AuthModule,
+    OperatorModule,
+    FleetModule,
+    NetworkModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
@@ -73,7 +79,8 @@ export class AppModule implements NestModule {
 
     consumer
       .apply(globalLimiter)
-      .forRoutes({ path: '*', method: RequestMethod.ALL })
+      // Named wildcard required by path-to-regexp v8 (Express 5).
+      .forRoutes({ path: '{*path}', method: RequestMethod.ALL })
       // Stricter limit on credential-handling endpoints.
       .apply(authLimiter)
       .forRoutes(
