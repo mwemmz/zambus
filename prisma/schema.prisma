@@ -1,0 +1,736 @@
+// ZamBus database schema — frozen contract v1
+// Stack: PostgreSQL 17 + Prisma
+// Conventions:
+//   - Money is stored as integer ngwee (1 ZMW = 100 ngwee). Never Float/Decimal for money.
+//   - All timestamps are UTC.
+//   - Business records are never hard-deleted; status fields are used instead.
+//   - Seat allocation concurrency is enforced by the unique(tripId, seatNumber) constraint
+//     plus conditional UPDATE ... WHERE status = 'AVAILABLE' in the booking service.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum RoleName {
+  PASSENGER
+  OPERATOR
+  DRIVER
+  CONDUCTOR
+  ADMIN
+}
+
+enum OperatorStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+enum OperatorStaffRole {
+  OPERATOR_ADMIN
+  DRIVER
+  CONDUCTOR
+}
+
+enum BusStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum FuelType {
+  DIESEL
+  PETROL
+  ELECTRIC
+  HYBRID
+  CNG
+}
+
+enum SeatType {
+  WINDOW
+  AISLE
+  MIDDLE
+}
+
+enum TripStatus {
+  SCHEDULED
+  BOARDING
+  DEPARTED
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+enum TripSeatStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  SIMULATED
+  MTN_MOMO
+  AIRTEL_MONEY
+  ZAMTEL
+  CARD
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  EXPIRED
+}
+
+enum VerificationResult {
+  ACCEPTED
+  REJECTED
+}
+
+enum IncidentType {
+  DELAY
+  BREAKDOWN
+  ACCIDENT
+  OTHER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CrewRole {
+  DRIVER
+  CONDUCTOR
+}
+
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  TRIP
+  SYSTEM
+}
+
+enum FeedbackStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+enum FuelRecordSource {
+  MANUAL
+  SENSOR
+}
+
+// ---------------------------------------------------------------------------
+// Identity and access
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  phone           String?   @unique
+  passwordHash    String
+  fullName        String
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  passengerProfile PassengerProfile?
+  userRoles        UserRole[]
+  staffProfiles    OperatorStaff[]
+  refreshTokens    RefreshToken[]
+  passwordResets   PasswordResetToken[]
+
+  bookings       Booking[]           @relation("BookingPassenger")
+  ticketsVerified TicketVerification[] @relation("Verifier")
+  incidents      TripIncident[]      @relation("IncidentReporter")
+  fuelRecords    FuelRecord[]        @relation("FuelRecorder")
+  notifications  Notification[]
+  feedback       Feedback[]
+  auditLogs      AuditLog[]
+  crewAssignments TripCrew[]
+  approvals      Operator[]          @relation("OperatorApprover")
+
+  @@index([status])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        RoleName @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model PassengerProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  nationalId            String?   @unique
+  dateOfBirth           DateTime?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nationalId])
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedBy  String?
+  createdByIp String?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Operators and fleet
+// ---------------------------------------------------------------------------
+
+model Operator {
+  id             String         @id @default(cuid())
+  name           String
+  registrationNo String         @unique
+  email          String
+  phone          String
+  address        String?
+  logoUrl        String?
+  status         OperatorStatus @default(PENDING)
+  approvedAt     DateTime?
+  approvedById   String?
+  rejectionReason String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  approvedBy User?          @relation("OperatorApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  staff      OperatorStaff[]
+  buses      Bus[]
+  routes     Route[]
+  trips      Trip[]
+  fuelRecords FuelRecord[]
+
+  @@index([status])
+}
+
+model OperatorStaff {
+  id             String           @id @default(cuid())
+  operatorId     String
+  userId         String
+  staffRole      OperatorStaffRole
+  licenceNumber  String?
+  licenceExpiry  DateTime?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([operatorId, userId])
+  @@index([userId])
+  @@index([operatorId, staffRole])
+}
+
+model Bus {
+  id             String    @id @default(cuid())
+  operatorId     String
+  registrationNo String    @unique
+  manufacturer   String?
+  model          String?
+  year           Int?
+  capacity       Int
+  fuelType       FuelType  @default(DIESEL)
+  status         BusStatus @default(ACTIVE)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  seats    Seat[]
+  trips    Trip[]
+  schedules Schedule[]
+  fuelRecords FuelRecord[]
+
+  @@index([operatorId])
+  @@index([status])
+}
+
+model Seat {
+  id         String   @id @default(cuid())
+  busId      String
+  seatNumber String
+  seatType   SeatType @default(AISLE)
+  row        Int?
+  column     Int?
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Cascade)
+
+  @@unique([busId, seatNumber])
+  @@index([busId])
+}
+
+// ---------------------------------------------------------------------------
+// Network and trips
+// ---------------------------------------------------------------------------
+
+model Route {
+  id                   String   @id @default(cuid())
+  operatorId           String
+  origin               String
+  destination          String
+  distanceKm           Float
+  estimatedDurationMin Int
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  stops    RouteStop[]
+  schedules Schedule[]
+  trips    Trip[]
+
+  @@index([operatorId])
+  @@index([origin, destination])
+}
+
+model RouteStop {
+  id                    String  @id @default(cuid())
+  routeId               String
+  stopName              String
+  sequenceNo            Int
+  distanceFromOriginKm  Float?
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, sequenceNo])
+  @@index([routeId])
+}
+
+model Schedule {
+  id            String  @id @default(cuid())
+  routeId       String
+  busId         String
+  departureTime String // local time "HH:mm"
+  daysOfWeek    Int[] // ISO weekday numbers 1=Mon .. 7=Sun
+  baseFareNgwee Int
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  bus   Bus   @relation(fields: [busId], references: [id], onDelete: Restrict)
+  trips Trip[]
+
+  @@index([routeId])
+  @@index([busId])
+}
+
+model Trip {
+  id                    String     @id @default(cuid())
+  scheduleId            String?
+  routeId               String
+  busId                 String
+  operatorId            String
+  departureAt           DateTime
+  arrivalAt             DateTime
+  fareNgwee             Int
+  status                TripStatus @default(SCHEDULED)
+  availableSeatCount    Int        @default(0)
+  actualDepartureAt     DateTime?
+  actualArrivalAt       DateTime?
+  delayMinutes          Int        @default(0)
+  cancellationReason    String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  schedule Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  route    Route     @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  bus      Bus       @relation(fields: [busId], references: [id], onDelete: Restrict)
+  operator Operator  @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+
+  seats        TripSeat[]
+  bookings     Booking[]
+  tickets      Ticket[]
+  crew         TripCrew[]
+  incidents    TripIncident[]
+  fuelRecord   FuelRecord?
+  verifications TicketVerification[]
+
+  @@index([departureAt, status])
+  @@index([routeId, departureAt])
+  @@index([operatorId, departureAt])
+  @@index([busId, departureAt])
+}
+
+model TripSeat {
+  id            String         @id @default(cuid())
+  tripId        String
+  seatNumber    String
+  seatType      SeatType       @default(AISLE)
+  status        TripSeatStatus @default(AVAILABLE)
+  bookingId     String?
+  holdToken     String?
+  holdExpiresAt DateTime?
+  updatedAt     DateTime       @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, seatNumber])
+  @@index([tripId, status])
+  @@index([holdExpiresAt])
+}
+
+model TripCrew {
+  id         String    @id @default(cuid())
+  tripId     String
+  userId     String
+  crewRole   CrewRole
+  assignedAt DateTime  @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+  @@index([userId])
+  @@index([tripId, crewRole])
+}
+
+// ---------------------------------------------------------------------------
+// Booking, payment, ticketing
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id                 String        @id @default(cuid())
+  reference          String        @unique
+  passengerId        String
+  tripId             String
+  status             BookingStatus @default(PENDING_PAYMENT)
+  totalNgwee         Int
+  holdExpiresAt      DateTime
+  confirmedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  passenger User @relation("BookingPassenger", fields: [passengerId], references: [id], onDelete: Restrict)
+  trip      Trip @relation(fields: [tripId], references: [id], onDelete: Restrict)
+
+  seats    BookingSeat[]
+  payments Payment[]
+  tickets  Ticket[]
+
+  @@index([passengerId, status])
+  @@index([tripId, status])
+  @@index([holdExpiresAt])
+}
+
+model BookingSeat {
+  id                 String  @id @default(cuid())
+  bookingId          String
+  tripId             String
+  seatNumber         String
+  passengerName      String
+  passengerIdNumber  String?
+  passengerPhone     String?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, seatNumber])
+  @@index([tripId])
+}
+
+model Payment {
+  id             String          @id @default(cuid())
+  bookingId      String
+  provider       PaymentProvider @default(SIMULATED)
+  transactionRef String          @unique
+  idempotencyKey String          @unique
+  amountNgwee    Int
+  status         PaymentStatus   @default(PENDING)
+  method         String?
+  failureReason  String?
+  paidAt         DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, status])
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  ticketNumber String       @unique
+  bookingId    String
+  tripId       String
+  seatNumber   String
+  qrTokenHash  String
+  status       TicketStatus @default(VALID)
+  issuedAt     DateTime     @default(now())
+  usedAt       DateTime?
+  cancelledAt  DateTime?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  trip    Trip    @relation(fields: [tripId], references: [id], onDelete: Restrict)
+
+  verifications TicketVerification[]
+
+  @@unique([bookingId, seatNumber])
+  @@index([tripId, status])
+}
+
+model TicketVerification {
+  id               String           @id @default(cuid())
+  ticketId         String
+  tripId           String
+  verifiedByUserId String
+  result           VerificationResult
+  reason           String?
+  deviceInfo       String?
+  verifiedAt       DateTime         @default(now())
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  trip     Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  verifier User   @relation("Verifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId])
+  @@index([tripId, verifiedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
+
+model TripIncident {
+  id               String       @id @default(cuid())
+  tripId           String
+  reportedByUserId String
+  type             IncidentType
+  severity         Severity     @default(MEDIUM)
+  description      String
+  occurredAt       DateTime
+  resolvedAt       DateTime?
+  resolutionNotes  String?
+  createdAt        DateTime     @default(now())
+
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  reporter User @relation("IncidentReporter", fields: [reportedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tripId])
+  @@index([type, occurredAt])
+}
+
+// ---------------------------------------------------------------------------
+// GreenTrack — energy, efficiency and emissions
+// ---------------------------------------------------------------------------
+
+model FuelRecord {
+  id               String          @id @default(cuid())
+  tripId           String          @unique
+  busId            String
+  operatorId       String
+  fuelType         FuelType
+  litresConsumed   Float
+  distanceKm       Float
+  source           FuelRecordSource @default(MANUAL)
+  recordedByUserId String
+  notes            String?
+  recordedAt       DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  bus      Bus      @relation(fields: [busId], references: [id], onDelete: Restrict)
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  recorder User     @relation("FuelRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([operatorId, recordedAt])
+  @@index([busId, recordedAt])
+}
+
+model EmissionFactor {
+  id             String    @id @default(cuid())
+  fuelType       FuelType
+  kgCo2PerLitre  Float
+  unit           String    @default("kg CO2 per litre")
+  source         String
+  scope          String
+  methodologyVersion String
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  calculations GreenCalculation[]
+
+  @@unique([fuelType, effectiveFrom])
+  @@index([fuelType, isActive])
+}
+
+model GreenCalculation {
+  id                  String   @id @default(cuid())
+  scope               String // TRIP | BUS | ROUTE | OPERATOR
+  operatorId          String
+  tripId              String?
+  busId               String?
+  routeId             String?
+  periodStart         DateTime?
+  periodEnd           DateTime?
+  methodologyVersion  String
+  emissionFactorId    String?
+  dataStatus          String   @default("COMPLETE")
+  metrics             Json
+  computedAt          DateTime @default(now())
+
+  emissionFactor EmissionFactor? @relation(fields: [emissionFactorId], references: [id], onDelete: SetNull)
+
+  @@index([operatorId, computedAt])
+  @@index([scope, computedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Engagement and governance
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String?
+  tripId    String?
+  rating    Int
+  comment   String?
+  status    FeedbackStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  action       String
+  entityType   String
+  entityId     String?
+  metadata     Json?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  key         String   @id
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
