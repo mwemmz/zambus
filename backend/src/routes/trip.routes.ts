@@ -17,10 +17,10 @@ router.get('/drivers', getDrivers);
 // Trips assigned to the logged-in driver (before /:id so 'my' is not parsed as an id)
 router.get('/my/assigned', authenticate, authorize('DRIVER'), getMyAssignedTrips);
 
-// Protected routes
+// Public read-only routes support browsing and seat selection before signup.
 router.get('/search', authenticate, validateQuery(searchTripsSchema), tripController.searchPublic.bind(tripController));
-router.get('/:id', authenticate, validateParams(z.object({ id: z.string().uuid() })), tripController.getById.bind(tripController));
-router.get('/:id/seats', authenticate, validateParams(z.object({ id: z.string().uuid() })), getTripSeats);
+router.get('/:id', validateParams(z.object({ id: z.string().uuid() })), tripController.getById.bind(tripController));
+router.get('/:id/seats', validateParams(z.object({ id: z.string().uuid() })), getTripSeats);
 router.post('/', authenticate, authorize('OPERATOR', 'ADMIN'), validate(createTripSchema), tripController.create.bind(tripController));
 router.put('/:id', authenticate, authorize('OPERATOR', 'ADMIN'), validate(updateTripSchema), tripController.update.bind(tripController));
 
