@@ -636,6 +636,89 @@ pre {
   color: var(--text-2);
 }
 
+/* Presentation readability for projector-sized screens. */
+@media (min-width: 900px) {
+  body {
+    font-size: 16px;
+  }
+
+  .nav-link {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .topbar {
+    height: 70px;
+  }
+
+  .topbar-title,
+  .topbar-user {
+    font-size: 15px;
+  }
+
+  .content {
+    padding: 34px 36px 56px;
+  }
+
+  .page {
+    gap: 22px;
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+  }
+
+  .page-header p,
+  .card-subtitle {
+    font-size: 15px;
+  }
+
+  .card {
+    padding: 24px;
+    gap: 18px;
+  }
+
+  .card-title {
+    font-size: 20px;
+  }
+
+  .stat {
+    padding: 20px 22px;
+  }
+
+  .stat-label {
+    font-size: 14px;
+  }
+
+  .stat-value {
+    font-size: 32px;
+  }
+
+  .stat-hint,
+  .field-hint {
+    font-size: 13px;
+  }
+
+  .field-label {
+    font-size: 14px;
+  }
+
+  .input {
+    padding: 12px 14px;
+    font-size: 16px;
+  }
+
+  .btn-md {
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+
+  .btn-lg {
+    padding: 14px 22px;
+    font-size: 16px;
+  }
+}
+
 .textarea {
   resize: vertical;
   min-height: 74px;

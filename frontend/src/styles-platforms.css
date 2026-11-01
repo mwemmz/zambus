@@ -735,6 +735,95 @@
   margin-top: 18px;
 }
 
+/* Presentation readability for projector-sized screens. */
+@media (min-width: 900px) {
+  .p-nav-inner {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .p-brand-text strong {
+    font-size: 19px;
+  }
+
+  .p-brand-text small {
+    font-size: 13px;
+  }
+
+  .p-link,
+  .p-user {
+    font-size: 16px;
+  }
+
+  .hero-eyebrow {
+    font-size: 14px;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .search-field label {
+    font-size: 13px;
+  }
+
+  .search-input {
+    height: 56px;
+    padding: 0 16px;
+    font-size: 17px;
+  }
+
+  .search-swap,
+  .search-submit {
+    height: 56px;
+  }
+
+  .search-submit {
+    font-size: 16px;
+  }
+
+  .search-title {
+    font-size: 34px;
+  }
+
+  .date-chip {
+    padding: 12px 19px;
+    font-size: 15px;
+  }
+
+  .sort-btn {
+    padding: 9px 16px;
+    font-size: 14px;
+  }
+
+  .journey-row {
+    padding: 26px 28px;
+    gap: 28px;
+  }
+
+  .journey-endpoint strong {
+    font-size: 28px;
+  }
+
+  .journey-endpoint .small,
+  .journey-duration .small {
+    font-size: 14px;
+  }
+
+  .journey-route {
+    font-size: 17px;
+  }
+
+  .journey-price {
+    font-size: 25px;
+  }
+
+  .journey-buy .btn {
+    font-size: 15px;
+  }
+}
+
 /* ---------- booking wizard ---------- */
 
 .booking-page {
