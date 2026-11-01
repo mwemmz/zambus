@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
-import { sequelize } from './config/database';
+import { sequelize, ensureSeatUniqueness } from './config/database';
 import { initModels } from './models';
 import routes from './routes';
 import { errorHandler } from './middleware';
@@ -63,6 +63,9 @@ export function initializeApp(): Promise<void> {
     // Auto-sync database tables (schema alteration is development only)
     await sequelize.sync({ alter: config.nodeEnv === 'development' });
     console.log('Database tables synchronized');
+
+    // sync() manages the plain indexes; the seat index needs a WHERE clause.
+    await ensureSeatUniqueness();
   })();
   return initialization;
 }

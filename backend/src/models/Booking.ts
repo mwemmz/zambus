@@ -87,11 +87,9 @@ Booking.init(
     timestamps: true,
     underscored: true,
     indexes: [
-      {
-        unique: true,
-        fields: ['tripId', 'seatNumber'],
-        name: 'unique_trip_seat',
-      },
+      // NOTE: seat uniqueness is created as a *partial* index in
+      // config/database.ts#ensureSeatUniqueness — a refunded row must not block
+      // the seat being sold again, so it cannot live in the model's index list.
       {
         fields: ['tripId'],
         name: 'idx_bookings_trip',

@@ -15,6 +15,30 @@ export const sequelize = new Sequelize(config.database.url, {
   },
 });
 
+/**
+ * Seat uniqueness, stated as a partial index.
+ *
+ * A seat may only have one live booking (PENDING or CONFIRMED) per trip, but
+ * REFUNDED rows are history: they must stay in the table for the audit trail
+ * and must not stop the seat being sold to somebody else. A plain
+ * UNIQUE("tripId", "seatNumber") cannot express that, so the index is created
+ * here (idempotently) instead of in the model definition.
+ */
+export async function ensureSeatUniqueness(): Promise<void> {
+  try {
+    await sequelize.query('DROP INDEX IF EXISTS "unique_trip_seat"');
+    await sequelize.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "unique_trip_seat"
+         ON "bookings" ("tripId", "seatNumber")
+         WHERE "paymentStatus" <> 'REFUNDED'`,
+    );
+  } catch (error) {
+    // Never block boot on index housekeeping; booking creation still checks
+    // seat availability at the application level.
+    console.error('Could not reconcile the seat uniqueness index:', error);
+  }
+}
+
 export async function connectDatabase(): Promise<void> {
   try {
     await sequelize.authenticate();
