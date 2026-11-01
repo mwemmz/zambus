@@ -4,7 +4,6 @@ import { RequireAuth, RequireRole } from './components/guards';
 import { LoginPage } from './pages/auth';
 import { RegisterPage } from './pages/auth';
 import { DashboardPage } from './pages/dashboard';
-import { ApiExplorerPage } from './pages/apiExplorer';
 import { MyBookingsPage, SearchTripsPage, TicketPage, TripDetailsPage } from './pages/passenger';
 import { DriverPage, EmergencyPage, ScanPage } from './pages/driver';
 import { ManifestPage } from './pages/manifest';
@@ -89,7 +88,6 @@ export default function App() {
             </RequireRole>
           }
         />
-        <Route path="api" element={<ApiExplorerPage />} />
         <Route path="*" element={<Navigate to="/app" replace />} />
       </Route>
 

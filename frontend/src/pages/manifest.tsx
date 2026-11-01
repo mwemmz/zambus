@@ -11,6 +11,7 @@ import {
   Card,
   Empty,
   ErrorBox,
+  LiveBadge,
   Loading,
   Notice,
   PageHeader,
@@ -22,7 +23,7 @@ export function ManifestPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const manifest = useFetch(() => api<Manifest>(`/trips/${tripId}/manifest`), [tripId]);
+  const manifest = useFetch(() => api<Manifest>(`/trips/${tripId}/manifest`), [tripId], { refreshMs: 5_000 });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export function ManifestPage() {
         subtitle={manifest.data ? `${manifest.data.trip.routeName} · ${fmtDate(manifest.data.trip.departureTime)}` : undefined}
         actions={
           <div className="row-actions">
+            <LiveBadge refreshing={manifest.refreshing} />
             <Button variant="ghost" onClick={() => navigate(-1)}>
               Back
             </Button>
@@ -148,7 +150,7 @@ export function ManifestPage() {
                         <td><StatusBadge status={passenger.paymentStatus} /></td>
                         <td><StatusBadge status={passenger.boardingStatus} /></td>
                         <td className="table-actions">
-                          {passenger.boardingStatus === 'NOT_BOARDED' && (
+                          {passenger.boardingStatus === 'NOT_BOARDED' && passenger.paymentStatus === 'CONFIRMED' && (
                             <Button
                               size="sm"
                               variant="success"
@@ -157,6 +159,9 @@ export function ManifestPage() {
                             >
                               {busyId === passenger.bookingId ? '…' : 'Board'}
                             </Button>
+                          )}
+                          {passenger.boardingStatus === 'NOT_BOARDED' && passenger.paymentStatus !== 'CONFIRMED' && (
+                            <span className="muted small">Awaiting payment</span>
                           )}
                           {passenger.boardingStatus === 'BOARDED' && (
                             <Button

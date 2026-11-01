@@ -49,7 +49,7 @@ export function Layout() {
 
   if (!user) return null;
 
-  const items = [...navByRole[user.role], { to: '/app/api', label: 'API tester' }];
+  const items = [...navByRole[user.role]];
 
   const handleLogout = () => {
     logout();

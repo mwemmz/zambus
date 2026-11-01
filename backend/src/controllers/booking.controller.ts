@@ -25,11 +25,15 @@ export const bookingController = {
   async confirm(req: AuthenticatedRequest, res: any): Promise<void> {
     try {
       const { id } = req.params as any;
-      const { paymentMethod } = req.body as any;
+      const { paymentMethod, mobileNumber, pin } = req.body ?? {};
 
-      const booking = await confirmBooking(id);
+      const booking = await confirmBooking(id, req.user?.userId, req.user?.role, {
+        paymentMethod,
+        mobileNumber,
+        pin,
+      });
 
-      successResponse(res, 200, booking, 'Payment confirmed. Booking is now active.');
+      successResponse(res, 200, booking, 'Payment approved. Your ticket is ready.');
     } catch (error: any) {
       errorResponse(res, 400, error.message);
     }
@@ -125,9 +129,9 @@ export const bookingController = {
     try {
       const { id } = req.params as any;
 
-      const booking = await cancelBooking(id);
+      const booking = await cancelBooking(id, req.user?.userId, req.user?.role);
 
-      successResponse(res, 200, booking, 'Booking cancelled. Refund processed.');
+      successResponse(res, 200, booking, 'Booking cancelled and seat released.');
     } catch (error: any) {
       errorResponse(res, 400, error.message);
     }

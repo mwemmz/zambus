@@ -4,7 +4,7 @@ import { useFetch } from '../lib/hooks';
 import { api } from '../lib/api';
 import { fmtDate, fmtMoney, label } from '../lib/format';
 import type { Analytics, BookingListItem, Trip, TripSearchResult, User, Company, Bus, Route } from '../lib/types';
-import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader, Stat, StatusBadge } from '../components/ui';
+import { Badge, Button, Card, Empty, ErrorBox, LiveBadge, Loading, PageHeader, Stat, StatusBadge } from '../components/ui';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -18,8 +18,8 @@ export function DashboardPage() {
 
 function PassengerDashboard({ user }: { user: User }) {
   const navigate = useNavigate();
-  const bookings = useFetch(() => api<BookingListItem[]>('/bookings/my'), []);
-  const trips = useFetch(() => api<TripSearchResult>('/trips?limit=5'), []);
+  const bookings = useFetch(() => api<BookingListItem[]>('/bookings/my'), [], { refreshMs: 10_000 });
+  const trips = useFetch(() => api<TripSearchResult>('/trips?limit=5'), [], { refreshMs: 10_000 });
 
   const list = bookings.data ?? [];
   const confirmed = list.filter((booking) => booking.paymentStatus === 'CONFIRMED').length;
@@ -30,7 +30,12 @@ function PassengerDashboard({ user }: { user: User }) {
       <PageHeader
         title={`Welcome back, ${user.fullName.split(' ')[0]}`}
         subtitle="Search for a trip, reserve a seat and confirm a mock payment to generate a QR ticket."
-        actions={<Button onClick={() => navigate('/app/trips')}>Find a trip</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={bookings.refreshing || trips.refreshing} />
+            <Button onClick={() => navigate('/app/trips')}>Find a trip</Button>
+          </div>
+        }
       />
 
       <div className="stat-grid">
@@ -113,7 +118,7 @@ function PassengerDashboard({ user }: { user: User }) {
 
 function DriverDashboard() {
   const navigate = useNavigate();
-  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), []);
+  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), [], { refreshMs: 10_000 });
   const list = trips.data ?? [];
 
   return (
@@ -121,7 +126,12 @@ function DriverDashboard() {
       <PageHeader
         title="Driver dashboard"
         subtitle="Your assigned trips, manifests and boarding tools."
-        actions={<Button onClick={() => navigate('/app/scan')}>Scan a ticket</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={trips.refreshing} />
+            <Button onClick={() => navigate('/app/scan')}>Scan a ticket</Button>
+          </div>
+        }
       />
 
       <div className="stat-grid">
@@ -188,14 +198,19 @@ function DriverDashboard() {
 
 function OperatorDashboard() {
   const navigate = useNavigate();
-  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), []);
+  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), [], { refreshMs: 15_000 });
 
   return (
     <div className="page">
       <PageHeader
         title="Operator dashboard"
         subtitle="Company performance and fleet operations."
-        actions={<Button onClick={() => navigate('/app/operator')}>Open operator console</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={analytics.refreshing} />
+            <Button onClick={() => navigate('/app/operator')}>Open operator console</Button>
+          </div>
+        }
       />
 
       {analytics.loading && <Loading />}
@@ -258,6 +273,7 @@ function AdminDashboard({ user }: { user: User }) {
       return { analytics, companies, buses, routes };
     },
     [],
+    { refreshMs: 10_000 },
   );
 
   const pendingTotal =
@@ -268,7 +284,12 @@ function AdminDashboard({ user }: { user: User }) {
       <PageHeader
         title={`Admin dashboard`}
         subtitle={`Signed in as ${user.fullName}. Platform-wide view.`}
-        actions={<Button onClick={() => navigate('/app/admin')}>Open admin console</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={data.refreshing} />
+            <Button onClick={() => navigate('/app/admin')}>Open admin console</Button>
+          </div>
+        }
       />
 
       {data.loading && <Loading />}

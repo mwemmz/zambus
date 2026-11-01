@@ -92,6 +92,10 @@ export interface Booking {
   qrCodeData: string;
   paymentStatus: PaymentStatus;
   boardingStatus: BoardingStatus;
+  paymentMethod?: 'MOCK' | 'MOBILE_MONEY' | null;
+  payerMobile?: string | null;
+  paymentReference?: string | null;
+  paidAt?: string | null;
   createdAt?: string;
 }
 
@@ -156,7 +160,7 @@ export interface Manifest {
 
 export interface ScanResult {
   valid: boolean;
-  status: 'VALID' | 'DUPLICATE' | 'INVALID_ROUTE' | 'WRONG_DATE' | 'NOT_FOUND';
+  status: 'VALID' | 'DUPLICATE' | 'INVALID_ROUTE' | 'WRONG_DATE' | 'NOT_FOUND' | 'CANCELLED' | 'UNPAID';
   message: string;
   booking: {
     bookingId: string;

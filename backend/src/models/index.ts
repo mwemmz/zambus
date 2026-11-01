@@ -171,6 +171,10 @@ export async function initModels(): Promise<void> {
     qrCodeData: { type: DataTypes.TEXT, allowNull: false },
     paymentStatus: { type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'REFUNDED'), defaultValue: 'PENDING' },
     boardingStatus: { type: DataTypes.ENUM('NOT_BOARDED', 'BOARDED', 'DROPPED_OFF'), defaultValue: 'NOT_BOARDED' },
+    paymentMethod: { type: DataTypes.ENUM('MOCK', 'MOBILE_MONEY') },
+    payerMobile: { type: DataTypes.STRING(20) },
+    paymentReference: { type: DataTypes.STRING(40) },
+    paidAt: { type: DataTypes.DATE },
   }, { tableName: 'bookings', timestamps: true, indexes: [{ unique: true, fields: ['tripId', 'seatNumber'], name: 'unique_trip_seat' }] });
 
   EmergencyReport = sequelize.define('EmergencyReport', {

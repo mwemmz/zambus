@@ -1,10 +1,11 @@
+import { Op } from 'sequelize';
 import { parseQrCodeData } from './qr.service';
 
 export interface ScanResult {
   valid: boolean;
   message: string;
   booking: any;
-  status: 'VALID' | 'DUPLICATE' | 'INVALID_ROUTE' | 'WRONG_DATE' | 'NOT_FOUND';
+  status: 'VALID' | 'DUPLICATE' | 'INVALID_ROUTE' | 'WRONG_DATE' | 'NOT_FOUND' | 'CANCELLED' | 'UNPAID';
 }
 
 export async function validateScannedTicket(qrData: string, tripId?: string): Promise<ScanResult> {
@@ -28,6 +29,24 @@ export async function validateScannedTicket(qrData: string, tripId?: string): Pr
       message: 'Booking not found',
       booking: null,
       status: 'NOT_FOUND',
+    };
+  }
+
+  if (booking.paymentStatus === 'REFUNDED') {
+    return {
+      valid: false,
+      message: 'This ticket has been cancelled and cannot be used for boarding',
+      booking,
+      status: 'CANCELLED',
+    };
+  }
+
+  if (booking.paymentStatus !== 'CONFIRMED') {
+    return {
+      valid: false,
+      message: 'Ticket payment has not been confirmed',
+      booking,
+      status: 'UNPAID',
     };
   }
 
@@ -82,6 +101,14 @@ export async function markAsBoarded(bookingId: string): Promise<any> {
     throw new Error('Booking not found');
   }
 
+  if (booking.paymentStatus === 'REFUNDED') {
+    throw new Error('This booking has been cancelled and cannot be boarded');
+  }
+
+  if (booking.paymentStatus !== 'CONFIRMED') {
+    throw new Error('Only confirmed bookings can be boarded');
+  }
+
   if (booking.boardingStatus === 'BOARDED') {
     throw new Error('Passenger is already marked as boarded');
   }
@@ -98,6 +125,10 @@ export async function markAsDroppedOff(bookingId: string): Promise<any> {
   const booking = await Booking.findByPk(bookingId);
   if (!booking) {
     throw new Error('Booking not found');
+  }
+
+  if (booking.paymentStatus === 'REFUNDED') {
+    throw new Error('This booking has been cancelled');
   }
 
   if (booking.boardingStatus !== 'BOARDED') {
@@ -125,7 +156,10 @@ export async function getManifest(tripId: string) {
   }
 
   const bookings = await Booking.findAll({
-    where: { tripId },
+    where: {
+      tripId,
+      paymentStatus: { [Op.ne]: 'REFUNDED' },
+    } as any,
     order: [['seatNumber', 'ASC']],
   });
 

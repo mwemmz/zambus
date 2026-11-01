@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../lib/api';
+import { QrCameraScanner } from '../components/QrCameraScanner';
 import { useFetch } from '../lib/hooks';
-import { fmtDate, label } from '../lib/format';
+import { fmtDate, label, statusTone } from '../lib/format';
 import type { EmergencyReport, EmergencyType, ScanResult, Trip } from '../lib/types';
 import {
   Badge,
@@ -12,6 +13,7 @@ import {
   ErrorBox,
   Field,
   Input,
+  LiveBadge,
   Loading,
   Notice,
   PageHeader,
@@ -22,7 +24,7 @@ import {
 
 export function DriverPage() {
   const navigate = useNavigate();
-  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), []);
+  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), [], { refreshMs: 10_000 });
   const list = trips.data ?? [];
 
   return (
@@ -30,7 +32,12 @@ export function DriverPage() {
       <PageHeader
         title="My trips"
         subtitle="Trips assigned to your driver account. Open the manifest to board passengers."
-        actions={<Button onClick={() => navigate('/app/scan')}>Scan ticket</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={trips.refreshing} />
+            <Button onClick={() => navigate('/app/scan')}>Scan ticket</Button>
+          </div>
+        }
       />
 
       {trips.loading && <Loading />}
@@ -78,7 +85,7 @@ export function DriverPage() {
 }
 
 export function ScanPage() {
-  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), []);
+  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), [], { refreshMs: 30_000 });
   const [mode, setMode] = useState<'qr' | 'id'>('qr');
   const [payload, setPayload] = useState('');
   const [tripId, setTripId] = useState('');
@@ -87,26 +94,40 @@ export function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!payload.trim()) return;
+  const validate = async (raw: string, inputMode: 'qr' | 'id' = mode) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+
     setBusy(true);
     setError(null);
     setMessage(null);
     setResult(null);
     try {
       const qrCodeData =
-        mode === 'id' ? JSON.stringify({ bookingId: payload.trim() }) : payload.trim();
+        inputMode === 'id' ? JSON.stringify({ bookingId: trimmed }) : trimmed;
       const scan = await api<ScanResult>('/boarding/scan', {
         method: 'POST',
         body: { qrCodeData, tripId: tripId || undefined },
       });
       setResult(scan);
+      if (scan.valid) navigator.vibrate?.(120);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void validate(payload);
+  };
+
+  const handleCameraScan = (data: string) => {
+    if (busy) return;
+    setMode('qr');
+    setPayload(data);
+    void validate(data, 'qr');
   };
 
   const markBoarded = async () => {
@@ -158,11 +179,16 @@ export function ScanPage() {
     <div className="page">
       <PageHeader
         title="Scan ticket"
-        subtitle="Validate a QR payload, then mark the passenger boarded or dropped off."
+        subtitle="Scan the passenger's QR code with the camera, then mark them boarded or dropped off."
       />
 
       <div className="two-col">
-        <Card title="Validate a ticket" subtitle="POST /api/boarding/scan">
+        <Card title="Scan a ticket" subtitle="Use the camera, upload a screenshot, or enter the payload manually.">
+          <QrCameraScanner onScan={handleCameraScan} busy={busy} />
+
+          <div className="section-divider" />
+          <div className="form-section-title">Manual entry</div>
+
           <form className="stack" onSubmit={submit}>
             <Field label="Input type">
               <Select value={mode} onChange={(event) => setMode(event.target.value as 'qr' | 'id')}>
@@ -217,11 +243,11 @@ export function ScanPage() {
         </Card>
 
         <Card title="Scan result" subtitle="The backend enforces duplicate/date/route checks.">
-          {!result && <Empty title="Nothing scanned yet" hint="Paste a ticket payload and validate." />}
+          {!result && <Empty title="Nothing scanned yet" hint="Start the camera or paste a ticket payload to validate." />}
           {result && (
             <div className="stack">
               <div className="scan-status">
-                <Badge tone={result.valid ? 'success' : 'danger'}>
+                <Badge tone={result.valid ? 'success' : statusTone(result.status)}>
                   {result.valid ? 'VALID' : result.status}
                 </Badge>
                 <strong>{result.message}</strong>
@@ -260,8 +286,8 @@ export function ScanPage() {
 const emergencyTypes: EmergencyType[] = ['BREAKDOWN', 'ACCIDENT', 'SEVERE_DELAY'];
 
 export function EmergencyPage() {
-  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), []);
-  const reports = useFetch(() => api<EmergencyReport[]>('/emergency'), []);
+  const trips = useFetch(() => api<Trip[]>('/trips/my/assigned'), [], { refreshMs: 30_000 });
+  const reports = useFetch(() => api<EmergencyReport[]>('/emergency'), [], { refreshMs: 10_000 });
   const [form, setForm] = useState({
     emergencyType: 'BREAKDOWN' as EmergencyType,
     description: '',
@@ -362,7 +388,12 @@ export function EmergencyPage() {
         <Card
           title="Recent reports"
           subtitle="GET /api/emergency"
-          actions={<Button size="sm" variant="ghost" onClick={reports.reload}>Refresh</Button>}
+          actions={
+            <div className="row-actions">
+              <LiveBadge refreshing={reports.refreshing} />
+              <Button size="sm" variant="ghost" onClick={reports.reload}>Refresh</Button>
+            </div>
+          }
         >
           {reports.loading && <Loading />}
           {reports.error && <ErrorBox error={reports.error} onRetry={reports.reload} />}

@@ -59,6 +59,7 @@ export function statusTone(status?: string | null): Tone {
     case 'MAINTENANCE':
     case 'BOARDING':
     case 'IN_TRANSIT':
+    case 'UNPAID':
       return 'warning';
     case 'CANCELLED':
     case 'REJECTED':

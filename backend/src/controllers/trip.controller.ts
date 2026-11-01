@@ -1,4 +1,5 @@
 import express, { Response } from "express";
+import { Op } from 'sequelize';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { Trip } from '../models';
 import { searchTrips, getAvailableSeats } from '../services/booking.service';
@@ -8,8 +9,9 @@ import { successResponse, errorResponse, notFoundResponse } from '../utils/respo
 /**
  * GET /api/trips/:id/seats
  * Returns the seat map for a trip: which seats are available and which are taken.
- * A seat is considered taken if it has ANY booking (pending or confirmed) so that
- * two passengers cannot select the same seat at the same time.
+ * A seat is considered taken if it has an active booking (pending or confirmed) so
+ * that two passengers cannot select the same seat at the same time. Refunded
+ * bookings do not block the seat.
  */
 export async function getTripSeats(req: AuthenticatedRequest, res: any): Promise<void> {
   try {
@@ -30,9 +32,13 @@ export async function getTripSeats(req: AuthenticatedRequest, res: any): Promise
     const bus = (trip as any).bus;
     const capacity = bus ? bus.seatCapacity : 40;
 
-    // Any booking on the seat (pending or confirmed) blocks selection.
+    // A pending or confirmed booking blocks the seat. Refunded/cancelled
+    // bookings are ignored so the seat can be booked again.
     const bookings = await Booking.findAll({
-      where: { tripId: id } as any,
+      where: {
+        tripId: id,
+        paymentStatus: { [Op.ne]: 'REFUNDED' },
+      } as any,
       attributes: ['seatNumber'],
       raw: true,
     });
@@ -109,7 +115,7 @@ export async function getDrivers(req: AuthenticatedRequest, res: any): Promise<v
 export const tripController = {
   async searchPublic(req: AuthenticatedRequest, res: any): Promise<void> {
     try {
-      const { origin, destination, travelDate, filter, page, limit } = req.query as any;
+      const { origin, destination, travelDate, filter, page, limit, includePast } = req.query as any;
 
       const result = await searchTrips({
         origin: origin as string,
@@ -118,6 +124,7 @@ export const tripController = {
         filter: filter as string,
         page: page ? parseInt(page as string, 10) : undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
+        includePast: includePast === 'true' || includePast === true,
       });
 
       successResponse(res, 200, result);

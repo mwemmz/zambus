@@ -48,13 +48,20 @@ app.use((_req, res) => {
 
 let initialization: Promise<void> | undefined;
 
+/**
+ * Connect to the database, initialize models and sync tables.
+ * Memoized so serverless invocations (api/index.js) reuse one connection.
+ */
 export function initializeApp(): Promise<void> {
   initialization ??= (async () => {
     await sequelize.authenticate();
     console.log('Database connected successfully');
+
     await initModels();
     console.log('Models initialized');
-    await sequelize.sync();
+
+    // Auto-sync database tables (schema alteration is development only)
+    await sequelize.sync({ alter: config.nodeEnv === 'development' });
     console.log('Database tables synchronized');
   })();
   return initialization;

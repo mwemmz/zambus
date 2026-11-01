@@ -13,6 +13,7 @@ import {
   ErrorBox,
   Field,
   Input,
+  LiveBadge,
   Loading,
   Notice,
   PageHeader,
@@ -55,7 +56,7 @@ export function OperatorPage() {
 }
 
 function CompanyTab() {
-  const company = useFetch(() => api<Company | null>('/operators/my-company'), []);
+  const company = useFetch(() => api<Company | null>('/operators/my-company'), [], { refreshMs: 15_000 });
   const [form, setForm] = useState({
     companyName: '',
     registrationNumber: '',
@@ -98,7 +99,11 @@ function CompanyTab() {
       {success && <Notice tone="success" title="Registered">{success}</Notice>}
 
       {company.data && (
-        <Card title="My company" subtitle="GET /api/operators/my-company">
+        <Card
+          title="My company"
+          subtitle="GET /api/operators/my-company"
+          actions={<LiveBadge refreshing={company.refreshing} />}
+        >
           <div className="company-card">
             <div>
               <h2>{company.data.companyName}</h2>
@@ -172,7 +177,7 @@ function CompanyTab() {
 }
 
 function FleetTab() {
-  const buses = useFetch(() => api<Bus[]>('/buses'), []);
+  const buses = useFetch(() => api<Bus[]>('/buses'), [], { refreshMs: 15_000 });
   const [form, setForm] = useState({
     registrationNumber: '',
     model: '',
@@ -287,7 +292,11 @@ function FleetTab() {
         </form>
       </Card>
 
-      <Card title="Fleet" subtitle="GET /api/buses">
+      <Card
+        title="Fleet"
+        subtitle="GET /api/buses"
+        actions={<LiveBadge refreshing={buses.refreshing} />}
+      >
         {buses.loading && <Loading />}
         {buses.error && <ErrorBox error={buses.error} onRetry={buses.reload} />}
         {!buses.loading && !buses.error && (buses.data?.length ?? 0) === 0 && (
@@ -347,7 +356,7 @@ function FleetTab() {
 }
 
 function RoutesTab() {
-  const routes = useFetch(() => api<Route[]>('/routes'), []);
+  const routes = useFetch(() => api<Route[]>('/routes'), [], { refreshMs: 15_000 });
   const [form, setForm] = useState({
     routeName: '',
     origin: '',
@@ -449,7 +458,11 @@ function RoutesTab() {
         </form>
       </Card>
 
-      <Card title="Routes" subtitle="GET /api/routes">
+      <Card
+        title="Routes"
+        subtitle="GET /api/routes"
+        actions={<LiveBadge refreshing={routes.refreshing} />}
+      >
         {routes.loading && <Loading />}
         {routes.error && <ErrorBox error={routes.error} onRetry={routes.reload} />}
         {!routes.loading && !routes.error && (routes.data?.length ?? 0) === 0 && (
@@ -508,11 +521,12 @@ function TripsTab() {
         api<Bus[]>('/buses'),
         api<Route[]>('/routes'),
         api<User[]>('/trips/drivers'),
-        api<TripSearchResult>('/trips?limit=50'),
+        api<TripSearchResult>('/trips?limit=50&includePast=true'),
       ]);
       return { company, buses, routes, drivers, trips };
     },
     [],
+    { refreshMs: 10_000 },
   );
 
   const [form, setForm] = useState({
@@ -694,7 +708,11 @@ function TripsTab() {
         </form>
       </Card>
 
-      <Card title="Trips" subtitle="GET /api/trips">
+      <Card
+        title="Trips"
+        subtitle="GET /api/trips"
+        actions={<LiveBadge refreshing={data.refreshing} />}
+      >
         {data.loading && <Loading />}
         {data.error && <ErrorBox error={data.error} onRetry={data.reload} />}
         {!data.loading && !data.error && trips.length === 0 && (
@@ -783,7 +801,7 @@ function TripsTab() {
 }
 
 function OperatorAnalyticsTab() {
-  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), []);
+  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), [], { refreshMs: 15_000 });
 
   return (
     <>

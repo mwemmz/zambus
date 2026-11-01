@@ -13,6 +13,7 @@ import {
   ErrorBox,
   Field,
   Input,
+  LiveBadge,
   Loading,
   Notice,
   PageHeader,
@@ -65,6 +66,7 @@ function ApprovalsTab() {
       return { companies, buses, routes };
     },
     [],
+    { refreshMs: 5_000 },
   );
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +121,9 @@ function ApprovalsTab() {
 
       {data.data && (
         <>
+          <div className="row-actions">
+            <LiveBadge refreshing={data.refreshing} />
+          </div>
           <div className="stat-grid">
             <Stat label="Pending companies" value={companies.length} tone="warning" />
             <Stat label="Pending buses" value={buses.length} tone="warning" />
@@ -291,7 +296,7 @@ const roles: Role[] = ['PASSENGER', 'DRIVER', 'OPERATOR', 'ADMIN'];
 
 function UsersTab() {
   const { user: currentUser, refreshUser } = useAuth();
-  const users = useFetch(() => api<PaginatedUsers>('/admin/users?limit=100'), []);
+  const users = useFetch(() => api<PaginatedUsers>('/admin/users?limit=100'), [], { refreshMs: 15_000 });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -319,7 +324,11 @@ function UsersTab() {
       {users.loading && <Loading />}
       {users.error && <ErrorBox error={users.error} onRetry={users.reload} />}
       {users.data && (
-        <Card title="Users" subtitle={`${users.data.total} account(s)`}>
+        <Card
+          title="Users"
+          subtitle={`${users.data.total} account(s)`}
+          actions={<LiveBadge refreshing={users.refreshing} />}
+        >
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -463,7 +472,7 @@ function SettingsTab() {
 }
 
 function AdminAnalyticsTab() {
-  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), []);
+  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), [], { refreshMs: 10_000 });
 
   return (
     <>
@@ -485,14 +494,18 @@ function AdminAnalyticsTab() {
 }
 
 function ReportsTab() {
-  const reports = useFetch(() => api<EmergencyReport[]>('/emergency'), []);
+  const reports = useFetch(() => api<EmergencyReport[]>('/emergency'), [], { refreshMs: 10_000 });
 
   return (
     <>
       {reports.loading && <Loading />}
       {reports.error && <ErrorBox error={reports.error} onRetry={reports.reload} />}
       {reports.data && (
-        <Card title="Emergency reports" subtitle="GET /api/emergency">
+        <Card
+          title="Emergency reports"
+          subtitle="GET /api/emergency"
+          actions={<LiveBadge refreshing={reports.refreshing} />}
+        >
           {reports.data.length === 0 && <Empty title="No emergency reports" />}
           {reports.data.length > 0 && (
             <div className="table-wrap">

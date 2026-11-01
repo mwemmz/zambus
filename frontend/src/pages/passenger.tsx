@@ -1,20 +1,21 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, errorMessage } from '../lib/api';
 import { useFetch } from '../lib/hooks';
 import { cx, fmtDate, fmtDuration, fmtMoney, splitList } from '../lib/format';
+import { MobileMoneyPayment, maskMobile } from '../components/MobileMoneyPayment';
 import type { Booking, BookingDetails, BookingListItem, SeatMap, Trip, TripSearchResult } from '../lib/types';
 import {
   Badge,
   Button,
   Card,
-  CopyButton,
   Empty,
   ErrorBox,
   Field,
   Input,
   KeyValue,
+  LiveBadge,
   Loading,
   Notice,
   PageHeader,
@@ -34,7 +35,7 @@ export function SearchTripsPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ origin: '', destination: '', travelDate: '', filter: '' });
   const [query, setQuery] = useState('limit=20');
-  const trips = useFetch(() => api<TripSearchResult>(`/trips?${query}`), [query]);
+  const trips = useFetch(() => api<TripSearchResult>(`/trips?${query}`), [query], { refreshMs: 10_000 });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -104,7 +105,10 @@ export function SearchTripsPage() {
         <span>
           {trips.loading ? 'Searching…' : `${trips.data?.total ?? 0} trip(s) found`}
         </span>
-        {trips.data && <span className="muted">{trips.data.page} / {Math.max(1, trips.data.totalPages)}</span>}
+        <div className="row-actions">
+          <LiveBadge refreshing={trips.refreshing} />
+          {trips.data && <span className="muted">{trips.data.page} / {Math.max(1, trips.data.totalPages)}</span>}
+        </div>
       </div>
 
       {trips.loading && <Loading />}
@@ -161,8 +165,8 @@ export function SearchTripsPage() {
 export function TripDetailsPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
-  const trip = useFetch(() => api<Trip>(`/trips/${tripId}`), [tripId]);
-  const seats = useFetch(() => api<SeatMap>(`/trips/${tripId}/seats`), [tripId]);
+  const trip = useFetch(() => api<Trip>(`/trips/${tripId}`), [tripId], { refreshMs: 15_000 });
+  const seats = useFetch(() => api<SeatMap>(`/trips/${tripId}/seats`), [tripId], { refreshMs: 4_000 });
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [busy, setBusy] = useState(false);
@@ -180,24 +184,6 @@ export function TripDetailsPage() {
         body: { tripId, seatNumber: selectedSeat },
       });
       setBooking(created);
-      seats.reload();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirm = async () => {
-    if (!booking) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const confirmed = await api<Booking>(`/bookings/${booking.bookingId}/confirm`, {
-        method: 'POST',
-        body: { paymentMethod: 'MOCK' },
-      });
-      setBooking(confirmed);
       seats.reload();
     } catch (err) {
       setError(errorMessage(err));
@@ -226,7 +212,7 @@ export function TripDetailsPage() {
     <div className="page">
       <PageHeader
         title="Select a seat"
-        subtitle="Reserve the seat first, then confirm the mock payment to generate the final QR ticket."
+        subtitle="Pick a seat, then approve the mobile money prompt on your phone to get your QR ticket."
         actions={<Button variant="ghost" onClick={() => navigate('/app/trips')}>Back to search</Button>}
       />
 
@@ -269,7 +255,11 @@ export function TripDetailsPage() {
           </Card>
 
           <div className="two-col">
-            <Card title="Seat map" subtitle="Green is available, red is taken, blue is your selection.">
+            <Card
+              title="Seat map"
+              subtitle="Green is available, red is taken, blue is your selection."
+              actions={<LiveBadge refreshing={seats.refreshing} />}
+            >
               {seats.loading && <Loading text="Loading seats…" />}
               {seats.error && <ErrorBox error={seats.error} onRetry={seats.reload} />}
               {seats.data && (
@@ -311,7 +301,7 @@ export function TripDetailsPage() {
               )}
             </Card>
 
-            <Card title="Booking" subtitle="Two-step flow: reserve → confirm payment.">
+            <Card title="Booking" subtitle="Reserve the seat, then pay from your mobile wallet.">
               {error && <Notice tone="danger" title="Booking failed">{error}</Notice>}
 
               {!booking && (
@@ -344,22 +334,43 @@ export function TripDetailsPage() {
                   {booking.paymentStatus === 'PENDING' && (
                     <>
                       <Notice tone="warning" title="Seat reserved">
-                        This is the mock payment step. Confirming calls POST /bookings/:id/confirm and
-                        writes the final QR payload.
+                        Seat {booking.seatNumber} is held for you. Enter your mobile number below — we send a
+                        payment prompt to that phone, and the ticket is issued as soon as you approve it with
+                        your 4-digit PIN.
                       </Notice>
-                      <Button disabled={busy} onClick={confirm}>
-                        {busy ? 'Confirming…' : 'Confirm mock payment'}
-                      </Button>
-                      <Button variant="ghost" disabled={busy} onClick={cancel}>
-                        Cancel booking
-                      </Button>
+                      <MobileMoneyPayment
+                        amountLabel={fmtMoney(trip.data?.fareAmount ?? 0)}
+                        routeLabel={
+                          trip.data?.route
+                            ? `${trip.data.route.origin} → ${trip.data.route.destination}`
+                            : 'ZamBus trip'
+                        }
+                        seatNumber={booking.seatNumber}
+                        onCancelBooking={cancel}
+                        cancelDisabled={busy}
+                        onApprove={async (mobileNumber, pin) => {
+                          const confirmed = await api<Booking>(`/bookings/${booking.bookingId}/confirm`, {
+                            method: 'POST',
+                            body: { paymentMethod: 'MOBILE_MONEY', mobileNumber, pin },
+                          });
+                          setBooking(confirmed);
+                          setError(null);
+                          seats.reload();
+                          return confirmed;
+                        }}
+                      />
                     </>
                   )}
 
                   {booking.paymentStatus === 'CONFIRMED' && (
                     <>
-                      <Notice tone="success" title="Booking confirmed">
-                        The ticket is ready. Open it to view the QR code and raw payload.
+                      <Notice tone="success" title="Payment approved">
+                        The ticket is ready.{' '}
+                        {booking.payerMobile
+                          ? `Paid with ${maskMobile(booking.payerMobile)}${
+                              booking.paymentReference ? ` · ${booking.paymentReference}` : ''
+                            }.`
+                          : ''}
                       </Notice>
                       <Button onClick={() => navigate(`/app/bookings/${booking.bookingId}`)}>Open ticket</Button>
                     </>
@@ -417,7 +428,7 @@ function SeatButton({
 
 export function MyBookingsPage() {
   const navigate = useNavigate();
-  const bookings = useFetch(() => api<BookingListItem[]>('/bookings/my'), []);
+  const bookings = useFetch(() => api<BookingListItem[]>('/bookings/my'), [], { refreshMs: 10_000 });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -442,7 +453,12 @@ export function MyBookingsPage() {
       <PageHeader
         title="My bookings"
         subtitle="View tickets, check boarding status and cancel pending bookings."
-        actions={<Button onClick={() => navigate('/app/trips')}>Book another trip</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={bookings.refreshing} />
+            <Button onClick={() => navigate('/app/trips')}>Book another trip</Button>
+          </div>
+        }
       />
 
       {error && <Notice tone="danger" title="Action failed">{error}</Notice>}
@@ -512,7 +528,7 @@ export function MyBookingsPage() {
 export function TicketPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
-  const details = useFetch(() => api<BookingDetails>(`/bookings/${bookingId}`), [bookingId]);
+  const details = useFetch(() => api<BookingDetails>(`/bookings/${bookingId}`), [bookingId], { refreshMs: 10_000 });
 
   const data = details.data;
 
@@ -520,15 +536,20 @@ export function TicketPage() {
     <div className="page">
       <PageHeader
         title="Ticket"
-        subtitle="The QR payload is what the driver scans. You can copy it for testing."
-        actions={<Button variant="ghost" onClick={() => navigate('/app/bookings')}>Back to bookings</Button>}
+        subtitle="Show this QR code at boarding. The driver scans it to verify your seat."
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={details.refreshing} />
+            <Button variant="ghost" onClick={() => navigate('/app/bookings')}>Back to bookings</Button>
+          </div>
+        }
       />
 
       {details.loading && <Loading />}
       {details.error && <ErrorBox error={details.error} onRetry={details.reload} />}
 
       {data && (
-        <div className="ticket-layout">
+        <div className="ticket-layout single">
           <Card className="ticket-card">
             <div className="ticket-head">
               <div>
@@ -569,25 +590,24 @@ export function TicketPage() {
                   <StatusBadge status={data.booking.boardingStatus} />
                   <Badge>{data.trip?.busModel ?? 'Bus'}</Badge>
                 </div>
+                <p className="muted small">
+                  Booking ref: <code>{data.booking.bookingId}</code>
+                </p>
               </div>
             </div>
 
             {data.booking.paymentStatus === 'PENDING' && (
               <Notice tone="warning" title="Payment pending">
-                This QR payload still says “pending”. Confirm the booking first to generate the final ticket.
+                This ticket is not valid for boarding yet. Confirm the booking first to generate the final ticket.
               </Notice>
             )}
-          </Card>
 
-          <Card
-            title="Raw QR payload"
-            subtitle="Paste this into the driver scan page."
-            actions={<CopyButton text={data.booking.qrCodeData} label="Copy payload" />}
-          >
-            <pre className="code-block">{data.booking.qrCodeData}</pre>
-            <p className="muted small">
-              Booking ID: <code>{data.booking.bookingId}</code>
-            </p>
+            {data.booking.paymentStatus === 'REFUNDED' && (
+              <Notice tone="danger" title="Ticket cancelled">
+                This booking has been refunded and the seat has been released. This QR code cannot be used for
+                boarding.
+              </Notice>
+            )}
           </Card>
         </div>
       )}

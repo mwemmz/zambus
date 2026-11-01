@@ -219,8 +219,16 @@ export function Tabs<T extends string>({
   );
 }
 
-export function CopyButton({ text, label: textLabel = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
+export function LiveBadge({ refreshing, label: liveLabel = 'Live' }: { refreshing?: boolean; label?: string }) {
+  return (
+    <span className="live-badge" title="This screen refreshes automatically">
+      <span className={cx('live-dot', refreshing && 'live-dot-busy')} />
+      {refreshing ? 'Updating…' : liveLabel}
+    </span>
+  );
+}
+
+export function CopyButton({ text, label: textLabel = 'Copy' }: { text: string; label?: string }) {  const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     try {

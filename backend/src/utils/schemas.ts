@@ -64,9 +64,42 @@ export const createBookingSchema = z.object({
   seatNumber: z.number().min(1, 'Seat number must be positive'),
 });
 
-export const confirmBookingSchema = z.object({
-  paymentMethod: z.string().optional(),
-});
+export const confirmBookingSchema = z
+  .object({
+    paymentMethod: z.enum(['MOCK', 'MOBILE_MONEY']).optional(),
+    // Mobile money: the passenger pays from their own handset.
+    mobileNumber: z
+      .string()
+      .trim()
+      .regex(/^\+?\d{9,15}$/, 'Enter a valid mobile number (9 to 15 digits)')
+      .optional(),
+    // The 4-digit PIN typed into the payment prompt. Accepted values are
+    // never verified in this mock — any 4 digits approve the payment.
+    pin: z
+      .string()
+      .trim()
+      .regex(/^\d{4}$/, 'PIN must be exactly 4 digits')
+      .optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.paymentMethod !== 'MOBILE_MONEY') return;
+
+    if (!value.mobileNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['mobileNumber'],
+        message: 'Mobile number is required for mobile money payments',
+      });
+    }
+
+    if (!value.pin) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pin'],
+        message: 'Enter your 4-digit PIN to approve the payment',
+      });
+    }
+  });
 
 // Boarding schemas
 export const scanTicketSchema = z.object({
@@ -107,6 +140,10 @@ export const searchTripsSchema = z.object({
   filter: z.enum(['lowestPrice', 'earliestDeparture', 'luxury', 'semiLuxury', 'standard']).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(20),
+  includePast: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
 });
 
 export const manifestQuerySchema = z.object({

@@ -4,6 +4,7 @@ import { config } from './index';
 
 export const sequelize = new Sequelize(config.database.url, {
   dialect: 'postgres',
+  // Required for bundled serverless runtimes (Vercel) to resolve the driver.
   dialectModule: pg,
   logging: config.nodeEnv === 'development' ? console.log : false,
   pool: {

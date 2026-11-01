@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { useFetch } from '../lib/hooks';
 import { fmtMoney } from '../lib/format';
 import type { Analytics } from '../lib/types';
-import { Button, Card, ErrorBox, Loading, Notice, PageHeader, Stat } from '../components/ui';
+import { Button, Card, ErrorBox, LiveBadge, Loading, Notice, PageHeader, Stat } from '../components/ui';
 
 export function AnalyticsPanel({ data }: { data: Analytics }) {
   if (data.hasCompany === false) {
@@ -72,14 +72,19 @@ export function AnalyticsPanel({ data }: { data: Analytics }) {
 
 export function AnalyticsPage() {
   const navigate = useNavigate();
-  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), []);
+  const analytics = useFetch(() => api<Analytics>('/admin/analytics'), [], { refreshMs: 10_000 });
 
   return (
     <div className="page">
       <PageHeader
         title="Analytics"
         subtitle="Revenue, bookings and commission, scoped to your role."
-        actions={<Button variant="ghost" onClick={() => navigate('/app')}>Back to dashboard</Button>}
+        actions={
+          <div className="row-actions">
+            <LiveBadge refreshing={analytics.refreshing} />
+            <Button variant="ghost" onClick={() => navigate('/app')}>Back to dashboard</Button>
+          </div>
+        }
       />
       {analytics.loading && <Loading />}
       {analytics.error && <ErrorBox error={analytics.error} onRetry={analytics.reload} />}
