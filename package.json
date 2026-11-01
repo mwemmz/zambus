@@ -1,5 +1,5 @@
 {
-  "name": "zambus-api",
+  "name": "zambus",
   "version": "1.0.0",
   "description": "ZamBus - Smart Digital Intercity Bus Management System for Zambia (backend API)",
   "private": true,
@@ -41,6 +41,8 @@
   },
   "homepage": "https://github.com/mwemmz/zambus#readme",
   "dependencies": {
+    "@neon/config": "^1.10.0",
+    "@neon/env": "^1.6.8",
     "@nestjs/common": "^11.2.8",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.8",

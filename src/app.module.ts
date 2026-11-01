@@ -18,7 +18,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env'],
+      envFilePath: ['.env.local', '.env'],
       validate: validateEnvironment,
       cache: true,
     }),
