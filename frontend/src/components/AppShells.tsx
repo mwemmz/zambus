@@ -78,10 +78,7 @@ export function PassengerShell() {
         <div className="p-nav-inner">
           <Link className="p-brand" to="/" onClick={closeMenu}>
             <span className="brand-mark">Z</span>
-            <span className="p-brand-text">
-              <strong>ZamBus</strong>
-              <small>Intercity coaches</small>
-            </span>
+            <strong className="p-brand-text">ZamBus</strong>
           </Link>
 
           <nav className={cx('p-links', menuOpen && 'p-links-open')}>

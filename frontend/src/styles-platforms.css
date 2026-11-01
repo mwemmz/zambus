@@ -737,6 +737,13 @@
 
 /* Presentation readability for projector-sized screens. */
 @media (min-width: 900px) {
+  .p-brand .brand-mark {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    font-size: 28px;
+  }
+
   .hero-search-wrap {
     max-width: 560px;
   }
@@ -767,8 +774,8 @@
     font-size: 19px;
   }
 
-  .p-brand-text small {
-    font-size: 13px;
+  .p-brand-text {
+    font-size: 22px;
   }
 
   .p-link,
