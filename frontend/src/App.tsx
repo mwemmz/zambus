@@ -24,11 +24,7 @@ export default function App() {
         <Route path="/search" element={<SearchResultsPage />} />
         <Route
           path="/trips/:tripId"
-          element={
-            <RequireAuth>
-              <TripBookingPage />
-            </RequireAuth>
-          }
+          element={<TripBookingPage />}
         />
         <Route
           path="/my-trips"

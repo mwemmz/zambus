@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../auth/AuthContext';
@@ -13,12 +13,14 @@ import {
   Button,
   Card,
   ErrorBox,
+  Field,
+  Input,
   Loading,
   Notice,
   StatusBadge,
 } from '../components/ui';
 
-const STEPS = ['Seats', 'Review & pay', 'Ticket'];
+const STEPS = ['Seats', 'Sign up & pay', 'Ticket'];
 
 function chunk<T>(items: T[], size: number): T[][] {
   const rows: T[][] = [];
@@ -59,12 +61,18 @@ export function TripBookingPage() {
   const paxParam = Number(params.get('pax') ?? 1);
   const pax = Number.isFinite(paxParam) && paxParam > 0 ? Math.min(paxParam, 6) : 1;
 
-  const { user } = useAuth();
+  const { register, user } = useAuth();
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<number[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [account, setAccount] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '+260',
+    password: '',
+  });
 
   const trip = useFetch(() => api<Trip>(`/trips/${tripId}`), [tripId]);
   const seats = useFetch(() => api<SeatMap>(`/trips/${tripId}/seats`), [tripId], {
@@ -116,6 +124,27 @@ export function TripBookingPage() {
       setError(errorMessage(err));
       seats.reload();
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateAccount = (key: keyof typeof account) => (event: ChangeEvent<HTMLInputElement>) =>
+    setAccount((current) => ({ ...current, [key]: event.target.value }));
+
+  const createAccountAndHoldSeats = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await register({
+        fullName: account.fullName.trim(),
+        email: account.email.trim(),
+        phoneNumber: account.phoneNumber.trim(),
+        password: account.password,
+      });
+      await holdSeats();
+    } catch (err) {
+      setError(errorMessage(err));
       setBusy(false);
     }
   };
@@ -252,6 +281,54 @@ export function TripBookingPage() {
 
           {step === 1 && (
             <>
+              {!user && (
+                <Card
+                  title="Create your passenger account"
+                  subtitle="You only need to sign up when you are ready to reserve your selected seats."
+                >
+                  <form onSubmit={createAccountAndHoldSeats} className="form-stack">
+                    <Field label="Full name" required>
+                      <Input
+                        value={account.fullName}
+                        onChange={updateAccount('fullName')}
+                        minLength={2}
+                        required
+                      />
+                    </Field>
+                    <Field label="Email" required>
+                      <Input
+                        type="email"
+                        value={account.email}
+                        onChange={updateAccount('email')}
+                        required
+                      />
+                    </Field>
+                    <Field label="Phone number" hint="At least 10 characters, e.g. +260977000000" required>
+                      <Input
+                        value={account.phoneNumber}
+                        onChange={updateAccount('phoneNumber')}
+                        minLength={10}
+                        required
+                      />
+                    </Field>
+                    <Field label="Password" hint="At least 6 characters" required>
+                      <Input
+                        type="password"
+                        value={account.password}
+                        onChange={updateAccount('password')}
+                        minLength={6}
+                        required
+                      />
+                    </Field>
+                    <Button type="submit" size="lg" disabled={busy}>
+                      {busy ? 'Creating account…' : 'Create account and continue'}
+                    </Button>
+                  </form>
+                </Card>
+              )}
+
+              {user && (
+                <>
               <Card
                 title="Check your booking"
                 subtitle="This is the passenger the ticket will be issued to."
@@ -302,6 +379,8 @@ export function TripBookingPage() {
                   cancelDisabled={busy}
                 />
               </Card>
+                </>
+              )}
             </>
           )}
 
@@ -353,20 +432,30 @@ export function TripBookingPage() {
 
           {step === 0 && (
             <BookingSummaryPanel trip={trip.data} seats={selected} pax={pax}>
-              <Button size="lg" disabled={selected.length === 0 || busy} onClick={holdSeats}>
+              <Button
+                size="lg"
+                disabled={selected.length === 0 || busy}
+                onClick={() => {
+                  if (user) {
+                    void holdSeats();
+                  } else {
+                    setStep(1);
+                  }
+                }}
+              >
                 {busy
                   ? 'Holding seats…'
                   : selected.length === 0
                     ? 'Select a seat to continue'
-                    : `Hold ${selected.length} seat${selected.length > 1 ? 's' : ''} & continue`}
+                    : `Continue with ${selected.length} seat${selected.length > 1 ? 's' : ''}`}
               </Button>
               <p className="muted small">
-                Nothing is charged yet. You review the order before paying.
+                Nothing is charged yet. You create an account only when you are ready to check out.
               </p>
             </BookingSummaryPanel>
           )}
 
-          {step === 1 && (
+          {step === 1 && user && (
             <BookingSummaryPanel
               trip={trip.data}
               seats={bookings.map((booking) => booking.seatNumber)}
