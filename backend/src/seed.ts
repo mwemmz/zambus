@@ -202,6 +202,14 @@ async function seed(): Promise<void> {
         estimatedTravelTime: 480, // 8 hours
         approvalStatus: 'PENDING',
       },
+      {
+        routeName: 'Livingstone - Kasama',
+        origin: 'Livingstone',
+        destination: 'Kasama',
+        intermediateStops: ['Lusaka', 'Kabwe', 'Mpika'],
+        estimatedTravelTime: 600, // 10 hours
+        approvalStatus: 'APPROVED',
+      },
     ];
 
     const createdRoutes: any[] = [];
@@ -248,6 +256,16 @@ async function seed(): Promise<void> {
         status: 'SCHEDULED',
         isRecurring: true,
         recurrencePattern: 'DAILY',
+      },
+      {
+        busId: createdBuses[1]?.busId,
+        routeId: createdRoutes[4]?.routeId,
+        driverId: driver?.userId,
+        departureTime: new Date(now.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
+        estimatedArrival: new Date(now.getTime() + 34 * 60 * 60 * 1000), // Tomorrow + 10h
+        fareAmount: 250.00,
+        status: 'SCHEDULED',
+        isRecurring: false,
       },
     ];
 
