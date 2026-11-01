@@ -44,6 +44,11 @@ Deliberate choices:
 - **QR codes are untouched.** The passenger ticket still renders `booking.qrCodeData` with
   `qrcode.react`, and the driver still validates it through `POST /api/boarding/scan`
   (`QrCameraScanner` + manual payload/ID entry), then marks boarded / dropped off.
+- **The ticket leads with the QR.** It is the part that gets scanned, so it owns the top of the
+  ticket at 360 px (68 vw on phones) with a 2-module quiet zone, and the trip/passenger/seat
+  details stack underneath a perforation line. "Show full screen" opens a projector view
+  (ESC or click to close) that fills the screen with the code — verified by feeding a
+  screenshot of that view through the driver's upload-scan path (VALID).
 
 ## What is still open
 

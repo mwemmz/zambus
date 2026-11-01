@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, errorMessage } from '../lib/api';
@@ -165,6 +165,26 @@ export function PassengerTicketPage() {
   });
   const data = details.data;
 
+  // Projector mode: the QR fills the screen so a driver can scan it from a
+  // distance (back of the coach, or projected on a wall).
+  const [projector, setProjector] = useState(false);
+
+  useEffect(() => {
+    if (!projector) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProjector(false);
+    };
+    window.addEventListener('keydown', onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [projector]);
+
   return (
     <div className="p-section">
       <div className="p-section-head">
@@ -192,20 +212,40 @@ export function PassengerTicketPage() {
             </div>
 
             <div className="ticket-body">
-              <div className="qr-box">
-                <QRCodeSVG
-                  value={data.booking.qrCodeData}
-                  size={210}
-                  bgColor="#ffffff"
-                  fgColor="#101828"
-                  level="M"
-                />
+              <div className="ticket-qr-zone">
+                <div className="qr-box">
+                  <QRCodeSVG
+                    value={data.booking.qrCodeData}
+                    size={360}
+                    bgColor="#ffffff"
+                    fgColor="#101828"
+                    level="M"
+                    marginSize={2}
+                  />
+                </div>
+
+                <div className="ticket-qr-caption">
+                  <strong>Scan to board</strong>
+                  <span className="muted small">
+                    Seat {data.booking.seatNumber} · {data.trip?.origin} → {data.trip?.destination}
+                  </span>
+                </div>
+
+                <Button variant="ghost" size="sm" onClick={() => setProjector(true)}>
+                  Show full screen
+                </Button>
               </div>
+
+              <div className="ticket-perf" aria-hidden="true" />
+
               <div className="ticket-info">
-                <h2>{data.trip?.routeName ?? 'Trip'}</h2>
-                <p className="muted">
-                  {data.trip?.origin} → {data.trip?.destination}
-                </p>
+                <div className="ticket-route">
+                  <h2>{data.trip?.routeName ?? 'Trip'}</h2>
+                  <p className="muted">
+                    {data.trip?.origin} → {data.trip?.destination}
+                  </p>
+                </div>
+
                 <div className="ticket-grid">
                   <div>
                     <span className="muted">Passenger</span>
@@ -213,7 +253,7 @@ export function PassengerTicketPage() {
                   </div>
                   <div>
                     <span className="muted">Seat</span>
-                    <strong>{data.booking.seatNumber}</strong>
+                    <strong className="ticket-seat">{data.booking.seatNumber}</strong>
                   </div>
                   <div>
                     <span className="muted">Departs</span>
@@ -223,16 +263,22 @@ export function PassengerTicketPage() {
                     <span className="muted">Bus</span>
                     <strong>{data.trip?.busReg ?? '—'}</strong>
                   </div>
+                  <div>
+                    <span className="muted">Boarding</span>
+                    <StatusBadge status={data.booking.boardingStatus} />
+                  </div>
+                  <div>
+                    <span className="muted">Fare</span>
+                    <strong>{fmtMoney(data.trip?.fareAmount)}</strong>
+                  </div>
                 </div>
-                <div className="chips">
-                  <StatusBadge status={data.booking.boardingStatus} />
-                  <Badge>{data.trip?.busModel ?? 'Bus'}</Badge>
-                  <Badge tone="primary">{fmtMoney(data.trip?.fareAmount)}</Badge>
+
+                <div className="ticket-ref">
+                  <span className="muted small">
+                    Booking ref: <code>{data.booking.bookingId}</code>
+                  </span>
+                  <CopyButton text={data.booking.bookingId} label="Copy" />
                 </div>
-                <p className="muted small">
-                  Booking ref: <code>{data.booking.bookingId}</code>
-                </p>
-                <CopyButton text={data.booking.bookingId} label="Copy booking ref" />
               </div>
             </div>
 
@@ -249,6 +295,44 @@ export function PassengerTicketPage() {
               </Notice>
             )}
           </Card>
+
+          {projector && (
+            <div
+              className="qr-projector"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ticket QR code, full screen"
+              onClick={() => setProjector(false)}
+            >
+              <div className="qr-projector-inner">
+                <QRCodeSVG
+                  value={data.booking.qrCodeData}
+                  size={1024}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  level="M"
+                  marginSize={4}
+                />
+                <div className="qr-projector-meta">
+                  <strong>
+                    {data.trip?.origin} → {data.trip?.destination}
+                  </strong>
+                  <span>
+                    Seat {data.booking.seatNumber} · {data.passenger?.fullName ?? 'Passenger'} ·{' '}
+                    {fmtDate(data.trip?.departureTime)}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="qr-projector-close"
+                onClick={() => setProjector(false)}
+                aria-label="Close full screen"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <div className="ticket-aside">
             <Card title="At the door">

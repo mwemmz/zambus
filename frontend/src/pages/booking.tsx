@@ -407,7 +407,14 @@ export function TripBookingPage() {
                 {bookings.map((booking) => (
                   <div key={booking.bookingId} className="mini-ticket">
                     <div className="mini-ticket-qr">
-                      <QRCodeSVG value={booking.qrCodeData} size={132} bgColor="#ffffff" fgColor="#101828" />
+                      <QRCodeSVG
+                        value={booking.qrCodeData}
+                        size={200}
+                        bgColor="#ffffff"
+                        fgColor="#101828"
+                        level="M"
+                        marginSize={2}
+                      />
                     </div>
                     <div className="mini-ticket-info">
                       <strong>Seat {booking.seatNumber}</strong>

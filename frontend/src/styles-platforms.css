@@ -1241,8 +1241,11 @@
 
 .mini-ticket {
   display: flex;
-  gap: 14px;
-  padding: 14px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 18px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -1261,7 +1264,13 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  align-items: flex-start;
+  align-items: center;
+}
+
+.mini-ticket-qr svg {
+  display: block;
+  width: min(200px, 60vw);
+  height: auto;
 }
 
 .seat-cabin {
@@ -1388,8 +1397,8 @@
   font-size: 13.5px;
 }
 
-.ticket-info .btn {
-  align-self: flex-start;
+.ticket-route .btn {
+  align-self: center;
 }
 
 /* ---------- driver crew app ---------- */
@@ -1704,5 +1713,179 @@
 
   .mytrip-side {
     align-items: flex-start;
+  }
+}
+
+/* ==========================================================================
+   Ticket: QR first, details stacked underneath
+   The QR is the thing that gets scanned, so it owns the top of the ticket and
+   is sized to be read from a distance (projector / back of the coach).
+   ========================================================================== */
+
+.ticket-body {
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.ticket-qr-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding-top: 6px;
+}
+
+.qr-box {
+  padding: 22px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 34px -24px rgba(16, 24, 40, 0.45);
+}
+
+/* The SVG carries a viewBox, so scaling here keeps it crisp at any size. */
+.qr-box svg {
+  display: block;
+  width: min(360px, 68vw);
+  height: auto;
+}
+
+.ticket-qr-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.ticket-qr-caption strong {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.ticket-perf {
+  width: 100%;
+  border-top: 2px dashed var(--border);
+  margin: 6px 0 0;
+}
+
+.ticket-info {
+  width: 100%;
+  gap: 14px;
+}
+
+.ticket-route {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.ticket-route h2 {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.ticket-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.ticket-seat {
+  font-size: 18px;
+}
+
+.ticket-ref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.ticket-ref code {
+  word-break: break-all;
+}
+
+.ticket-ref .btn {
+  align-self: center;
+}
+
+/* ---------- projector / full-screen QR ---------- */
+
+.qr-projector {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+
+.qr-projector-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-height: 100%;
+}
+
+.qr-projector-inner > svg {
+  display: block;
+  width: min(78vmin, 900px);
+  height: auto;
+}
+
+.qr-projector-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  color: #101828;
+}
+
+.qr-projector-meta strong {
+  font-size: clamp(16px, 2.4vmin, 26px);
+}
+
+.qr-projector-meta span {
+  font-size: clamp(13px, 1.8vmin, 20px);
+  color: #475467;
+}
+
+.qr-projector-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #344054;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.qr-projector-close:hover {
+  border-color: var(--text-3);
+}
+
+@media (max-width: 640px) {
+  .qr-box {
+    padding: 16px;
+  }
+
+  .qr-box svg {
+    width: min(360px, 74vw);
   }
 }
