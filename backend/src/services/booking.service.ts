@@ -45,10 +45,14 @@ export async function createBooking(input: CreateBookingInput): Promise<any> {
       throw new Error('This trip has already departed');
     }
 
+    // Only live holds block a seat. Refunded/cancelled bookings keep their row
+    // for the audit trail but must not stop the seat being sold again — the
+    // seat map already treats them as free.
     const existingBooking = await Booking.findOne({
       where: {
         tripId: input.tripId,
         seatNumber: input.seatNumber,
+        paymentStatus: { [Op.ne]: 'REFUNDED' },
       },
       transaction,
     });

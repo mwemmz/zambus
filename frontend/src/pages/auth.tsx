@@ -2,7 +2,21 @@ import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'reac
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { errorMessage } from '../lib/api';
+import type { Role } from '../lib/types';
 import { Button, Field, Input, Notice, Select } from '../components/ui';
+
+/** Where each role lands after signing in. The three surfaces are separate apps. */
+function roleHome(role?: Role): string {
+  switch (role) {
+    case 'DRIVER':
+      return '/driver';
+    case 'OPERATOR':
+    case 'ADMIN':
+      return '/app';
+    default:
+      return '/my-trips';
+  }
+}
 
 const demoAccounts = [
   { role: 'Passenger', email: 'passenger@zambus.com', password: 'passenger123' },
@@ -54,16 +68,20 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (user && token) return <Navigate to="/app" replace />;
+  // `from` is set by RequireAuth when a passenger is bounced out mid-flow.
+  const from = (location.state as { from?: string } | null)?.from;
+  const target = from && from.startsWith('/') ? from : roleHome(user?.role);
+
+  if (user && token) return <Navigate to={target} replace />;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await login(email.trim(), password);
-      const from = (location.state as { from?: string } | null)?.from;
-      navigate(from && from.startsWith('/app') ? from : '/app', { replace: true });
+      const signedIn = await login(email.trim(), password);
+      const destination = from && from.startsWith('/') ? from : roleHome(signedIn.role);
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -142,7 +160,7 @@ export function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (user && token) return <Navigate to="/app" replace />;
+  if (user && token) return <Navigate to={roleHome(user.role)} replace />;
 
   const update = (key: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -152,13 +170,13 @@ export function RegisterPage() {
     setBusy(true);
     setError(null);
     try {
-      await register({
+      const registered = await register({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phoneNumber: form.phoneNumber.trim(),
         password: form.password,
       });
-      navigate('/app', { replace: true });
+      navigate(roleHome(registered.role), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

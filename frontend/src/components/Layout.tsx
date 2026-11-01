@@ -1,9 +1,17 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Badge } from './ui';
 import { cx } from '../lib/format';
 import type { Role } from '../lib/types';
+
+/**
+ * Operator / admin console.
+ *
+ * This is the dense, sidebar-driven surface. Passengers use the storefront
+ * (components/AppShells.tsx → PassengerShell) and drivers use the crew app
+ * (DriverShell); neither should land here.
+ */
 
 interface NavItem {
   to: string;
@@ -12,26 +20,19 @@ interface NavItem {
 }
 
 const navByRole: Record<Role, NavItem[]> = {
-  PASSENGER: [
-    { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/trips', label: 'Find trips' },
-    { to: '/app/bookings', label: 'My bookings' },
-  ],
-  DRIVER: [
-    { to: '/app', label: 'Dashboard', end: true },
-    { to: '/app/driver', label: 'My trips' },
-    { to: '/app/scan', label: 'Scan ticket' },
-    { to: '/app/emergency', label: 'Emergency' },
-  ],
+  PASSENGER: [],
+  DRIVER: [],
   OPERATOR: [
-    { to: '/app', label: 'Dashboard', end: true },
+    { to: '/app', label: 'Overview', end: true },
     { to: '/app/operator', label: 'Operator console' },
     { to: '/app/analytics', label: 'Analytics' },
+    { to: '/app/api', label: 'API explorer' },
   ],
   ADMIN: [
-    { to: '/app', label: 'Dashboard', end: true },
+    { to: '/app', label: 'Overview', end: true },
     { to: '/app/admin', label: 'Admin console' },
     { to: '/app/analytics', label: 'Analytics' },
+    { to: '/app/api', label: 'API explorer' },
   ],
 };
 
@@ -49,7 +50,11 @@ export function Layout() {
 
   if (!user) return null;
 
-  const items = [...navByRole[user.role]];
+  // Wrong surface for the role — send them to their own app.
+  if (user.role === 'PASSENGER') return <Navigate to="/my-trips" replace />;
+  if (user.role === 'DRIVER') return <Navigate to="/driver" replace />;
+
+  const items = navByRole[user.role];
 
   const handleLogout = () => {
     logout();
@@ -63,7 +68,7 @@ export function Layout() {
           <div className="brand-mark">Z</div>
           <div>
             <div className="brand-name">ZamBus</div>
-            <div className="brand-sub">Operations Console</div>
+            <div className="brand-sub">Operations console</div>
           </div>
         </div>
 
@@ -83,6 +88,9 @@ export function Layout() {
         </nav>
 
         <div className="sidebar-footer">
+          <Link className="nav-link nav-link-muted" to="/">
+            ← Passenger storefront
+          </Link>
           <div className="user-card">
             <div className="avatar">{user.fullName.charAt(0).toUpperCase()}</div>
             <div className="user-meta">
@@ -103,7 +111,7 @@ export function Layout() {
             ☰
           </button>
           <div className="topbar-title">
-            <span className="live-dot" /> localhost:3000
+            <span className="live-dot" /> ZamBus operations
           </div>
           <div className="topbar-actions">
             <Badge tone={roleTone[user.role]}>{user.role}</Badge>

@@ -26,6 +26,7 @@ export function MobileMoneyPayment({
   amountLabel,
   routeLabel,
   seatNumber,
+  seatLabel,
   onApprove,
   onCancelBooking,
   cancelDisabled,
@@ -33,6 +34,8 @@ export function MobileMoneyPayment({
   amountLabel: string;
   routeLabel: string;
   seatNumber: number;
+  /** Overrides the seat rendering when the order holds several seats. */
+  seatLabel?: string;
   onApprove: (mobileNumber: string, pin: string) => Promise<unknown>;
   onCancelBooking: () => void;
   cancelDisabled?: boolean;
@@ -88,6 +91,7 @@ export function MobileMoneyPayment({
           amountLabel={amountLabel}
           routeLabel={routeLabel}
           seatNumber={seatNumber}
+          seatLabel={seatLabel}
           payerLabel={maskMobile(`+${digits}`)}
           onApprove={async (pin) => {
             await onApprove(`+${digits}`, pin);
@@ -104,6 +108,7 @@ export function PaymentPinPrompt({
   amountLabel,
   routeLabel,
   seatNumber,
+  seatLabel,
   payerLabel,
   onApprove,
   onClose,
@@ -111,6 +116,7 @@ export function PaymentPinPrompt({
   amountLabel: string;
   routeLabel: string;
   seatNumber: number;
+  seatLabel?: string;
   payerLabel: string;
   onApprove: (pin: string) => Promise<unknown>;
   onClose: () => void;
@@ -221,7 +227,7 @@ export function PaymentPinPrompt({
           </div>
           <div>
             <dt>Seat</dt>
-            <dd>Seat {seatNumber}</dd>
+            <dd>{seatLabel ? `Seats ${seatLabel}` : `Seat ${seatNumber}`}</dd>
           </div>
           <div>
             <dt>From</dt>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../lib/api';
 import { QrCameraScanner } from '../components/QrCameraScanner';
@@ -35,7 +35,7 @@ export function DriverPage() {
         actions={
           <div className="row-actions">
             <LiveBadge refreshing={trips.refreshing} />
-            <Button onClick={() => navigate('/app/scan')}>Scan ticket</Button>
+            <Button onClick={() => navigate('/driver/scan')}>Scan ticket</Button>
           </div>
         }
       />
@@ -74,8 +74,8 @@ export function DriverPage() {
               {trip.isRecurring && <Badge tone="info">Recurring</Badge>}
             </div>
             <div className="card-actions">
-              <Button onClick={() => navigate(`/app/manifest/${trip.tripId}`)}>Open manifest</Button>
-              <Button variant="ghost" onClick={() => navigate('/app/scan')}>Scan</Button>
+              <Button onClick={() => navigate(`/driver/manifest/${trip.tripId}`)}>Open manifest</Button>
+              <Button variant="ghost" onClick={() => navigate('/driver/scan')}>Scan</Button>
             </div>
           </article>
         ))}
@@ -94,6 +94,16 @@ export function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // On a phone the result card sits below a tall camera preview, so bring it
+  // into view the moment a scan lands.
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  const revealResult = () => {
+    window.setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
   const validate = async (raw: string, inputMode: 'qr' | 'id' = mode) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
@@ -111,8 +121,10 @@ export function ScanPage() {
       });
       setResult(scan);
       if (scan.valid) navigator.vibrate?.(120);
+      revealResult();
     } catch (err) {
       setError(errorMessage(err));
+      revealResult();
     } finally {
       setBusy(false);
     }
@@ -242,7 +254,8 @@ export function ScanPage() {
           </form>
         </Card>
 
-        <Card title="Scan result" subtitle="The backend enforces duplicate/date/route checks.">
+        <div ref={resultRef}>
+          <Card title="Scan result" subtitle="The backend enforces duplicate/date/route checks.">
           {!result && <Empty title="Nothing scanned yet" hint="Start the camera or paste a ticket payload to validate." />}
           {result && (
             <div className="stack">
@@ -277,7 +290,8 @@ export function ScanPage() {
               )}
             </div>
           )}
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
