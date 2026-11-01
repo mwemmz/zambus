@@ -46,19 +46,23 @@ app.use((_req, res) => {
   });
 });
 
-async function startServer(): Promise<void> {
-  try {
-    // Connect to database
+let initialization: Promise<void> | undefined;
+
+export function initializeApp(): Promise<void> {
+  initialization ??= (async () => {
     await sequelize.authenticate();
     console.log('Database connected successfully');
-
-    // Initialize models
     await initModels();
     console.log('Models initialized');
-
-    // Auto-sync database tables (development only)
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
     console.log('Database tables synchronized');
+  })();
+  return initialization;
+}
+
+async function startServer(): Promise<void> {
+  try {
+    await initializeApp();
 
     // Start server
     app.listen(config.port, () => {

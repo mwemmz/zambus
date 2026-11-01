@@ -1,8 +1,10 @@
 import { Sequelize } from 'sequelize';
+import pg from 'pg';
 import { config } from './index';
 
 export const sequelize = new Sequelize(config.database.url, {
   dialect: 'postgres',
+  dialectModule: pg,
   logging: config.nodeEnv === 'development' ? console.log : false,
   pool: {
     max: 10,
