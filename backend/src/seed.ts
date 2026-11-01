@@ -179,11 +179,59 @@ async function seed(): Promise<void> {
         approvalStatus: 'APPROVED',
       },
       {
+        routeName: 'Lusaka - Kabwe',
+        origin: 'Lusaka',
+        destination: 'Kabwe',
+        intermediateStops: [],
+        estimatedTravelTime: 150,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Kapiri Mposhi',
+        origin: 'Lusaka',
+        destination: 'Kapiri Mposhi',
+        intermediateStops: ['Kabwe'],
+        estimatedTravelTime: 240,
+        approvalStatus: 'APPROVED',
+      },
+      {
         routeName: 'Lusaka - Ndola',
         origin: 'Lusaka',
         destination: 'Ndola',
         intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Mpika'],
         estimatedTravelTime: 420, // 7 hours
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Kitwe',
+        origin: 'Lusaka',
+        destination: 'Kitwe',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Ndola'],
+        estimatedTravelTime: 450,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Chingola',
+        origin: 'Lusaka',
+        destination: 'Chingola',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Ndola', 'Kitwe'],
+        estimatedTravelTime: 510,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Mufulira',
+        origin: 'Lusaka',
+        destination: 'Mufulira',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Ndola', 'Kitwe'],
+        estimatedTravelTime: 510,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Solwezi',
+        origin: 'Lusaka',
+        destination: 'Solwezi',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Ndola', 'Kitwe', 'Chingola'],
+        estimatedTravelTime: 720,
         approvalStatus: 'APPROVED',
       },
       {
@@ -195,12 +243,92 @@ async function seed(): Promise<void> {
         approvalStatus: 'APPROVED',
       },
       {
+        routeName: 'Lusaka - Petauke',
+        origin: 'Lusaka',
+        destination: 'Petauke',
+        intermediateStops: ['Luangwa', 'Nyimba'],
+        estimatedTravelTime: 360,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Katete',
+        origin: 'Lusaka',
+        destination: 'Katete',
+        intermediateStops: ['Luangwa', 'Nyimba', 'Petauke'],
+        estimatedTravelTime: 390,
+        approvalStatus: 'APPROVED',
+      },
+      {
         routeName: 'Lusaka - Mongu',
         origin: 'Lusaka',
         destination: 'Mongu',
         intermediateStops: ['Mumbwa', 'Kaoma'],
         estimatedTravelTime: 480, // 8 hours
-        approvalStatus: 'PENDING',
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Kaoma',
+        origin: 'Lusaka',
+        destination: 'Kaoma',
+        intermediateStops: ['Mumbwa'],
+        estimatedTravelTime: 360,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Kasama',
+        origin: 'Lusaka',
+        destination: 'Kasama',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Serenje', 'Mpika'],
+        estimatedTravelTime: 660,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Lusaka - Mansa',
+        origin: 'Lusaka',
+        destination: 'Mansa',
+        intermediateStops: ['Kabwe', 'Kapiri Mposhi', 'Mkushi', 'Mumbwa'],
+        estimatedTravelTime: 600,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Ndola - Kitwe',
+        origin: 'Ndola',
+        destination: 'Kitwe',
+        intermediateStops: [],
+        estimatedTravelTime: 90,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Ndola - Livingstone',
+        origin: 'Ndola',
+        destination: 'Livingstone',
+        intermediateStops: ['Kabwe', 'Lusaka', 'Kafue', 'Choma'],
+        estimatedTravelTime: 600,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Kitwe - Solwezi',
+        origin: 'Kitwe',
+        destination: 'Solwezi',
+        intermediateStops: ['Chingola'],
+        estimatedTravelTime: 300,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Livingstone - Choma',
+        origin: 'Livingstone',
+        destination: 'Choma',
+        intermediateStops: ['Kalomo'],
+        estimatedTravelTime: 180,
+        approvalStatus: 'APPROVED',
+      },
+      {
+        routeName: 'Livingstone - Lusaka',
+        origin: 'Livingstone',
+        destination: 'Lusaka',
+        intermediateStops: ['Kalomo', 'Choma', 'Kafue'],
+        estimatedTravelTime: 360,
+        approvalStatus: 'APPROVED',
       },
       {
         routeName: 'Livingstone - Kasama',
@@ -235,39 +363,20 @@ async function seed(): Promise<void> {
     const driver = createdUsers.find((u: any) => u.role === 'DRIVER');
 
     const now = new Date();
-    const trips = [
-      {
-        busId: createdBuses[0]?.busId,
-        routeId: createdRoutes[0]?.routeId,
+    const trips = routes.map((routeData, index) => {
+      const departureTime = new Date(now.getTime() + (index % 3 + 1) * 24 * 60 * 60 * 1000);
+      return {
+        busId: createdBuses[index % 2]?.busId,
+        routeId: createdRoutes[index]?.routeId,
         driverId: driver?.userId,
-        departureTime: new Date(now.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
-        estimatedArrival: new Date(now.getTime() + 30 * 60 * 60 * 1000), // Tomorrow + 6h
-        fareAmount: 150.00,
+        departureTime,
+        estimatedArrival: new Date(departureTime.getTime() + routeData.estimatedTravelTime * 60 * 1000),
+        fareAmount: Math.max(50, Math.round(routeData.estimatedTravelTime / 3)),
         status: 'SCHEDULED',
-        isRecurring: false,
-      },
-      {
-        busId: createdBuses[1]?.busId,
-        routeId: createdRoutes[1]?.routeId,
-        driverId: driver?.userId,
-        departureTime: new Date(now.getTime() + 48 * 60 * 60 * 1000), // Day after tomorrow
-        estimatedArrival: new Date(now.getTime() + 55 * 60 * 60 * 1000), // +7h
-        fareAmount: 200.00,
-        status: 'SCHEDULED',
-        isRecurring: true,
-        recurrencePattern: 'DAILY',
-      },
-      {
-        busId: createdBuses[1]?.busId,
-        routeId: createdRoutes[4]?.routeId,
-        driverId: driver?.userId,
-        departureTime: new Date(now.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
-        estimatedArrival: new Date(now.getTime() + 34 * 60 * 60 * 1000), // Tomorrow + 10h
-        fareAmount: 250.00,
-        status: 'SCHEDULED',
-        isRecurring: false,
-      },
-    ];
+        isRecurring: index === 3,
+        recurrencePattern: index === 3 ? 'DAILY' : undefined,
+      };
+    });
 
     const createdTrips: any[] = [];
 
