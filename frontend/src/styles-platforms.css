@@ -152,18 +152,16 @@
   color: #fff;
   overflow: hidden;
   background:
-    radial-gradient(1200px 480px at 78% -10%, rgba(56, 189, 248, 0.35), transparent 65%),
-    radial-gradient(900px 420px at 12% 10%, rgba(129, 140, 248, 0.3), transparent 60%),
-    linear-gradient(140deg, #0b1f4b 0%, #123b96 46%, #1a56db 100%);
+    linear-gradient(90deg, rgba(7, 26, 70, 0.9) 0%, rgba(18, 59, 150, 0.7) 48%, rgba(18, 59, 150, 0.22) 100%),
+    url('/hero-bus.png') center 58% / cover no-repeat;
 }
 
 .hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.5;
+  background: linear-gradient(180deg, rgba(7, 26, 70, 0.12), rgba(7, 26, 70, 0.42));
+  opacity: 1;
   pointer-events: none;
 }
 
