@@ -32,3 +32,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+backend/coverage/
+frontend/.vite/
+frontend/*.local
+frontend/*.tsbuildinfo
