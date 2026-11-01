@@ -171,11 +171,16 @@ export function SearchResultsPage() {
         {!trips.loading && !trips.error && results.length === 0 && (
           <Empty
             title="No departures match this search"
-            hint="Try another date, or clear the origin and destination filters."
+            hint="Try tomorrow, another date, or clear the origin and destination filters."
             action={
-              <Button variant="ghost" onClick={() => navigate('/search')}>
-                Clear filters
-              </Button>
+              <div className="row-actions">
+                <Button variant="primary" onClick={() => apply({ ...values, date: todayISO(1) })}>
+                  Show tomorrow's departures
+                </Button>
+                <Button variant="ghost" onClick={() => navigate('/search')}>
+                  Clear filters
+                </Button>
+              </div>
             }
           />
         )}

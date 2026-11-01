@@ -31,7 +31,7 @@ export function HomePage() {
   }, [upcoming.data]);
 
   const search = (values: SearchValues) => {
-    const params = buildSearchParams({ ...values, date: values.date || todayISO() });
+    const params = buildSearchParams({ ...values, date: values.date || todayISO(1) });
     navigate(`/search?${params.toString()}`);
   };
 
@@ -61,7 +61,7 @@ export function HomePage() {
 
       <div className="hero-search-wrap">
         <SearchBar
-          initial={{ from: '', to: '', date: todayISO(), pax: 1, sort: '' }}
+          initial={{ from: '', to: '', date: todayISO(1), pax: 1, sort: '' }}
           onSubmit={search}
         />
       </div>
