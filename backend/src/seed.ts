@@ -363,19 +363,22 @@ async function seed(): Promise<void> {
     const driver = createdUsers.find((u: any) => u.role === 'DRIVER');
 
     const now = new Date();
-    const trips = routes.map((routeData, index) => {
-      const departureTime = new Date(now.getTime() + (index % 3 + 1) * 24 * 60 * 60 * 1000);
-      return {
-        busId: createdBuses[index % 2]?.busId,
+    const trips = routes.flatMap((routeData, index) => {
+      const fareAmount = Math.max(50, Math.round(routeData.estimatedTravelTime / 3));
+      const todayDeparture = new Date(now.getTime() + (index % 6 + 1) * 60 * 60 * 1000);
+      const futureDeparture = new Date(now.getTime() + (index % 3 + 1) * 24 * 60 * 60 * 1000);
+
+      return [todayDeparture, futureDeparture].map((departureTime, tripIndex) => ({
+        busId: createdBuses[(index + tripIndex) % 2]?.busId,
         routeId: createdRoutes[index]?.routeId,
         driverId: driver?.userId,
         departureTime,
         estimatedArrival: new Date(departureTime.getTime() + routeData.estimatedTravelTime * 60 * 1000),
-        fareAmount: Math.max(50, Math.round(routeData.estimatedTravelTime / 3)),
+        fareAmount,
         status: 'SCHEDULED',
-        isRecurring: index === 3,
-        recurrencePattern: index === 3 ? 'DAILY' : undefined,
-      };
+        isRecurring: tripIndex === 1 && index === 3,
+        recurrencePattern: tripIndex === 1 && index === 3 ? 'DAILY' : undefined,
+      }));
     });
 
     const createdTrips: any[] = [];

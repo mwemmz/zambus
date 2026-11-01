@@ -1,0 +1,17 @@
+{
+  "name": "ZamBus",
+  "short_name": "ZamBus",
+  "description": "Search, book and manage intercity bus tickets in Zambia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#1a56db",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

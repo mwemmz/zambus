@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, errorMessage } from '../lib/api';
@@ -164,10 +164,20 @@ export function PassengerTicketPage() {
     refreshMs: 15_000,
   });
   const data = details.data;
+  const [validatedPopup, setValidatedPopup] = useState(false);
+  const previousBoardingStatus = useRef<string | undefined>();
 
   // Projector mode: the QR fills the screen so a driver can scan it from a
   // distance (back of the coach, or projected on a wall).
   const [projector, setProjector] = useState(false);
+
+  useEffect(() => {
+    const status = data?.booking.boardingStatus;
+    if (status && status !== 'NOT_BOARDED' && previousBoardingStatus.current === 'NOT_BOARDED') {
+      setValidatedPopup(true);
+    }
+    if (status) previousBoardingStatus.current = status;
+  }, [data?.booking.boardingStatus]);
 
   useEffect(() => {
     if (!projector) return;
@@ -349,6 +359,22 @@ export function PassengerTicketPage() {
                 <li>Cancellations are free until the coach departs.</li>
               </ul>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {validatedPopup && (
+        <div className="validation-modal-backdrop" role="presentation">
+          <div
+            className="validation-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="validated-title"
+          >
+            <div className="validation-modal-mark">✓</div>
+            <h2 id="validated-title">Ticket validated</h2>
+            <p>Your QR ticket was scanned successfully. You are confirmed as boarded.</p>
+            <Button onClick={() => setValidatedPopup(false)}>Done</Button>
           </div>
         </div>
       )}

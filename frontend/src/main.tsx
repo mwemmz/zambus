@@ -6,6 +6,14 @@ import { AuthProvider } from './auth/AuthContext';
 import './styles.css';
 import './styles-platforms.css';
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.error('ZamBus service worker registration failed:', error);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>

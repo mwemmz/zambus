@@ -733,6 +733,48 @@
   margin-top: 18px;
 }
 
+.validation-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 24, 40, 0.62);
+}
+
+.validation-modal {
+  width: min(100%, 440px);
+  padding: 34px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.28);
+  text-align: center;
+}
+
+.validation-modal-mark {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 42px;
+  font-weight: 800;
+}
+
+.validation-modal h2 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.validation-modal p {
+  margin-bottom: 24px;
+  color: var(--text-2);
+}
+
 /* Presentation readability for projector-sized screens. */
 @media (min-width: 900px) {
   .p-brand .brand-mark {
